@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>ChatGPT 챗봇 - chatbot1</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="container py-4" style="max-width: 600px;">
+    <h2 class="text-center mb-4">ChatGPT 챗봇 - chatbot1</h2>
+
+    <div id="chat-box" class="border rounded p-3 mb-3 bg-light" style="height: 400px; overflow-y: auto;">
+      {% for user, bot, ts in chats %}
+        <div>
+          <span class="fw-bold">👤 사용자:</span> {{ user }}
+        </div>
+        <div class="mb-2">
+          <span class="fw-bold">🤖 챗봇:</span> {{ bot }}
+        </div>
+      {% endfor %}
+    </div>
+    
+    <form method="post" action="/chat" class="d-flex align-items-center">
+      <input type="text" name="user_message" class="form-control me-2" placeholder="메시지를 입력하세요..." autocomplete="off" required>
+      <button type="submit" class="btn btn-primary">보내기</button>
+    </form>
+  </div>
+
+  <script>
+    // 새 메시지 입력 시 스크롤 하단 이동
+    const chatBox = document.getElementById('chat-box');
+    chatBox.scrollTop = chatBox.scrollHeight;
+  </script>
+</body>
+</html>

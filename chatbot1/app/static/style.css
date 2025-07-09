@@ -1,0 +1,11 @@
+body {
+  background: #f8f9fa;
+}
+#chat-box {
+  font-size: 1.05rem;
+  background: #fff;
+}
+form input[type="text"] {
+  height: 48px;
+  font-size: 1.1rem;
+}

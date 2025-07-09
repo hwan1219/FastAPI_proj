@@ -1,0 +1,6 @@
+CREATE TABLE chat_history (
+	id INT AUTO_INCREMENT PRIMARY KEY,
+    user_message TEXT NOT NULL,
+    bot_response TEXT NOT NULL,
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+);
