@@ -18,3 +18,4 @@ aiofiles
 pdfplumber 
 tiktoken
 pymysql
+pydantic[email]
