@@ -16,7 +16,6 @@ app = FastAPI(title="FastAPI Jinja2 Demo")
 
 # 템플릿 설정
 templates = Jinja2Templates(directory="templates")
-app.mount("/static", StaticFiles(directory="static"), name="static")
 app.mount("/static", StaticFiles(directory=os.path.join(os.path.dirname(__file__), "static")), name="static")
 
 # 메모리 사용자 리스트
