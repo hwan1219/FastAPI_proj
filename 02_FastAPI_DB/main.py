@@ -6,7 +6,7 @@ from typing import Optional, List # 선택적 필드를 위한 타입 힌트
 from fastapi import FastAPI, Request, Response, Depends, Path, HTTPException
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import create_engine, MetaData, Table, Column, Integer, String
-from sqlalchemy.orm import Session # 실제 DB 세션 객체
+from sqlalchemy.orm import Session, sessionmaker # 실제 DB 세션 객체
 from sqlalchemy.ext.declarative import declarative_base # ORM 모델 서비스
 from pydantic import BaseModel
 
@@ -39,8 +39,7 @@ class MemoUpdate(BaseModel):
   
 # 삭제용
 class MemoDelete(BaseModel):
-  title: str
-  content: str
+  id: int
   
 # 출력용  
 class MemoResponse(BaseModel):
@@ -52,8 +51,15 @@ class MemoResponse(BaseModel):
     orm_mode = True
   
 # 6) DB 세션 의존성
+SessionLocal = sessionmaker(
+    autocommit=False,
+    autoflush=False,
+    expire_on_commit=False,
+    bind=engine
+)
+
 def get_db():
-  db = Session(bind=engine)
+  db = SessionLocal()
   try:
     yield db
   finally:
@@ -90,8 +96,8 @@ async def get_memo(
 # 3) 메모 수정
 @app.put("/memos/{memo_id}", response_model=MemoResponse, status_code=201)
 async def update_memo(
-  memo_id: int = ...,
-  memo: MemoUpdate = ...,
+  memo_id: int,
+  memo: MemoUpdate,
   db: Session = Depends(get_db)
 ):
   # 기존 메모 조회
@@ -112,16 +118,12 @@ async def update_memo(
   db.commit()
   db.refresh(existing_memo)
   
-  return {
-    "id": existing_memo.id,
-    "title": existing_memo.title,
-    "content": existing_memo.content
-  }
+  return existing_memo
   
 # 4) 메모 삭제
 @app.delete("/memos/{memo_id}", status_code=204)
 async def delete_memo(
-  memo_id: int = ...,
+  memo_id: int,
   db: Session = Depends(get_db)
 ):
   memo = db.query(Memo).filter(Memo.id == memo_id).first()
