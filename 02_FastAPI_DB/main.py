@@ -136,3 +136,15 @@ async def delete_memo(
   db.commit()
   
   return Response(status_code=204)
+
+# 템플릿 & 기본 페이지 라우트
+@app.get("/")
+async def read_root(request: Request):
+  return templates.TemplateResponse(
+    "home.html",
+    {"request": request}
+  )
+
+@app.get("/about")
+async def about():
+  return {"message": "이것은 마이 메모 앱의 소개 페이지입니다."}
