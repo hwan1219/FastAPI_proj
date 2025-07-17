@@ -1,19 +1,20 @@
 <!DOCTYPE html>
-<html>
+<html lang="ko">
 <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Login</title>
   <link rel="stylesheet" href="/static/css/style.css">
   <script defer src="/static/js/login.js"></script>
 </head>
 <body>
-  <h2>로그인</h2>
+  <h1>로그인</h1>
+
   <form id="loginForm">
-    <input type="text" name="username" placeholder="아이디" required />
-    <input type="password" name="password" placeholder="비밀번호" required />
+    <input type="text" name="username" placeholder="아이디" required>
+    <input type="password" name="password" placeholder="비밀번호" required>
     <button type="submit">로그인</button>
   </form>
-  <a href="/register">회원가입</a>
-
-
+  <a href="/register" class="goRegister">회원가입</a>
 </body>
 </html>

@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>새 메모 작성</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+  <script defer src="/static/js/new_memo.js"></script>
+</head>
+<body>
+  <div class="container">
+    <h1>📝 새 메모 작성</h1>
+
+    <form id="memoForm">
+      <input type="text" id="title" name="title" placeholder="제목" required>
+      <textarea id="content" name="content" placeholder="내용" required></textarea>
+      <button type="submit">저장</button>
+    </form>
+
+    <div>
+      <a href="/">← 돌아가기</a>
+    </div>
+  </div>
+</body>
+</html>

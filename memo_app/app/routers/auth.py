@@ -1,12 +1,13 @@
 from fastapi import APIRouter, Depends, Response, Cookie, HTTPException
 from typing import Optional
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session as DbSession
 from passlib.context import CryptContext
 import uuid
 from datetime import datetime, timezone, timedelta
 
 from app.db.connection import get_db
 from app.models.user import User
+from app.models.session import Session as SessionModel
 from app.schemas.user import UserCreate, UserLogin, UserUpdate, PasswordUpdate
 
 router = APIRouter(
@@ -26,29 +27,44 @@ def verify_pwd(plain_pwd: str, hashed_pwd: str):
   return pwd_context.verify(plain_pwd, hashed_pwd)
 
 # 로그인 상태 확인
-def get_current_user(session_token: str = Cookie(None), db: Session = Depends(get_db)):
+def get_current_user(
+  session_token: str = Cookie(None),
+  db: DbSession = Depends(get_db)
+):
   if not session_token:
     raise HTTPException(
       status_code=401,
       detail="로그인이 필요합니다"
     )
   
-  session = db.query(Session).filter(Session.token == session_token).first()
-  if not session or session.expires_at < datetime.now(timezone.utc):
+  session = db.query(SessionModel).filter(SessionModel.token == session_token).first()
+  if not session:
     raise HTTPException(
       status_code=401,
       detail="세션이 만료되었습니다"
     )
   
+  expires_at_aware = session.expires_at.replace(tzinfo=timezone.utc)
+  
+  if expires_at_aware < datetime.now(timezone.utc):
+    raise HTTPException(
+      status_code=401,
+      detail="세션이 만료되었습니다"
+    )
+      
+  session.expires_at = datetime.now(timezone.utc) + timedelta(days=7)
+  db.commit()
+  
   user = db.query(User).filter(User.id == session.user_id).first()
   
   return user
+
 
 # 회원가입
 @router.post("/register", status_code=201)
 def register(
   user: UserCreate,
-  db: Session = Depends(get_db)
+  db: DbSession = Depends(get_db)
 ):
   existing_user = db.query(User).filter(User.username == user.username).first()
   
@@ -76,7 +92,7 @@ def register(
 def login(
   user: UserLogin,
   response: Response,
-  db: Session = Depends(get_db)
+  db: DbSession = Depends(get_db)
 ):
   db_user = db.query(User).filter(User.username == user.username).first()
   
@@ -90,7 +106,7 @@ def login(
   session_token = str(uuid.uuid4())
   expires_at = datetime.now(timezone.utc) + timedelta(days=7)
   
-  session = Session(user_id=db_user.id, token=session_token, expires_at=expires_at)
+  session = SessionModel(token=session_token, user_id=db_user.id, expires_at=expires_at)
   
   db.add(session)
   db.commit()
@@ -100,56 +116,69 @@ def login(
     value=session_token,
     httponly=True,
     max_age=60*60*24*7,
-    secure=True,
+    # secure=True,
     samesite="lax"
   )
   
-  return Response(status_code=201)
+  response.status_code = 201
+  return response
+
 
 # 정보 수정
-@router.put("/user/update")
+@router.put("/infoupdate", response_model=UserUpdate)
 def update_user(
   user_update: UserUpdate,
   current_user: User = Depends(get_current_user),
-  db: Session = Depends(get_db)
+  db: DbSession = Depends(get_db)
 ):
   try:
     if user_update.email:
       existing_email = db.query(User).filter(User.email == user_update.email).first()
       if existing_email and existing_email.id != current_user.id:
-        raise HTTPException(status_code=400, detail="이미 존재하는 이메일입니다.")
+        raise HTTPException(
+          status_code=409,
+          detail="이미 존재하는 이메일입니다."
+        )
       current_user.email = user_update.email
 
     # username은 그냥 업데이트
     if user_update.username:
+      existing_username = db.query(User).filter(User.username == user_update.username).first()
+      if existing_username and existing_username.id != current_user.id:
+        raise HTTPException(
+          status_code=409,
+          detail="이미 존재하는 아이디입니다."
+        )
       current_user.username = user_update.username
 
     db.commit()
     db.refresh(current_user)
-    return {"msg": "유저 정보가 업데이트되었습니다."}
+    return current_user
   
   except Exception:
     db.rollback()
     raise HTTPException(status_code=500, detail="업데이트 중 오류가 발생했습니다.")
 
+
 # 비밀번호 수정
-@router.put("/user/password")
+@router.put("/passwordupdate")
 def update_password(
   pwd_update: PasswordUpdate,
   current_user: User = Depends(get_current_user),
-  db: Session = Depends(get_db)
+  db: DbSession = Depends(get_db)
 ):
   if not verify_pwd(pwd_update.current_password, current_user.hashed_password):
-    raise HTTPException(status_code=400, detail="현재 비밀번호가 올바르지 않습니다.")
+    raise HTTPException(status_code=409, detail="현재 비밀번호가 올바르지 않습니다.")
 
   try:
     current_user.hashed_password = hash_pwd(pwd_update.new_password)
     db.commit()
     return {"msg": "비밀번호가 변경되었습니다."}
   
-  except Exception as e:
+  except Exception:
     db.rollback()
     raise HTTPException(status_code=500, detail="비밀번호 변경 중 오류가 발생했습니다.")
+
 
 # 로그아웃
 @router.post("/logout")
@@ -158,10 +187,15 @@ def logout(
   session_token: Optional[str] = Cookie(None),
   # Optional 생략 가능
   # Cookie(None), Query(...), Path(...) 등의 의존성 함수에서 기본값이 None일 경우 자동으로 Optional로 취급
-  db: Session = Depends(get_db)
+  current_user: User = Depends(get_current_user),
+  db: DbSession = Depends(get_db)
 ):
   if session_token:
-    session = db.query(Session).filter(Session.token == session_token).first()
+    session = db.query(SessionModel).filter(
+      SessionModel.token == session_token,
+      SessionModel.user_id == current_user.id
+    ).first()
+    
     if session:
       db.delete(session)
       db.commit()
@@ -171,3 +205,24 @@ def logout(
   return Response(status_code=200)
 
 
+# 회원 탈퇴
+@router.delete("/delete")
+def delete_user(
+  response: Response,
+  current_user: User = Depends(get_current_user),
+  db: DbSession = Depends(get_db)
+):
+  # 사용자 세션 모두 삭제
+  # PC, 핸드폰 등 여러 디바이스, 브라우저 마다 세션이 생성되기 때문에 .all() 사용
+  sessions = db.query(SessionModel).filter(SessionModel.user_id == current_user.id).all()
+  for session in sessions:
+    db.delete(session)
+  
+  # 사용자 계정 삭제  
+  db.delete(current_user)
+  db.commit()
+  
+  # 쿠키 삭제
+  response.delete_cookie("session_token")
+  
+  return

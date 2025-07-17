@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>정보 수정</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+  <script defer src="/static/js/profile.js"></script>
+</head>
+<body>
+  <div class="container">
+    <h1>마이페이지</h1>
+
+    <h2>개인정보 수정</h2>
+    <form id="updateForm">
+      <input type="text" id="username" placeholder="새 아이디">
+      <input type="email" id="email" placeholder="이메일">
+      <button type="submit">정보 수정</button>
+    </form>
+
+    <h2>비밀번호 변경</h2>
+    <form id="passwordForm">
+      <input type="password" id="current_password" placeholder="현재 비밀번호" required>
+      <input type="password" id="new_password" placeholder="새 비밀번호" required>
+      <button type="submit">비밀번호 변경</button>
+    </form>
+
+    <button id="goHomeBtn">메인으로</button>
+  </div>
+</body>
+</html>

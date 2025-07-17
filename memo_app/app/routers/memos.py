@@ -5,6 +5,8 @@ from typing import List
 from app.db.connection import get_db
 from app.schemas.memo import MemoCreate, MemoUpdate, MemoResponse
 from app.models.memo import Memo
+from app.models.user import User
+from app.routers.auth import get_current_user
 # python 문법에서 폴더 이름을 app으로 하게되면 모듈/패키지 이름으로 인식함
 
 router = APIRouter(
@@ -17,24 +19,35 @@ router = APIRouter(
 def get_memos(
   skip: int = 0,
   limit: int = 100,
+  current_user: User = Depends(get_current_user),
   db: Session = Depends(get_db)
 ):
-  memos = db.query(Memo).offset(skip).limit(limit).all()
+  memos = db.query(Memo).filter(Memo.user_id == current_user.id).offset(skip).limit(limit).all()
   
   return memos
+
+@router.get("/count")
+def get_memo_count(
+  current_user: User = Depends(get_current_user),
+  db: Session = Depends(get_db)
+):
+  count = db.query(Memo).filter(Memo.user_id == current_user.id).count()
+  
+  return {"count": count}
 
 # 메모 단건 조회
 @router.get("/{memo_id}", response_model=MemoResponse)
 def get_memo(
   memo_id: int,
+  current_user: User = Depends(get_current_user),
   db: Session = Depends(get_db)
 ):
-  memo = db.query(Memo).filter(Memo.id == memo_id).first()
+  memo = db.query(Memo).filter(Memo.id == memo_id, Memo.user_id == current_user.id).first()
   
   if memo is None:
     raise HTTPException(
       status_code=404,
-      detail="메모를 찾을 수 없습니다"
+      detail="메모를 찾을 수 없거나 접근 권한이 없습니다"
     )
   return memo
 
@@ -42,9 +55,14 @@ def get_memo(
 @router.post("/", response_model=MemoResponse)
 def create_memo(
   memo: MemoCreate,
+  current_user: User = Depends(get_current_user),
   db: Session = Depends(get_db)
 ):
-  new_memo = Memo(title=memo.title, content=memo.content)
+  new_memo = Memo(
+    title=memo.title,
+    content=memo.content,
+    user_id=current_user.id
+  )
   db.add(new_memo)
   db.commit()
   db.refresh(new_memo)
@@ -56,9 +74,13 @@ def create_memo(
 def update_memo(
   memo_id: int,
   memo_update: MemoUpdate,
+  current_user: User = Depends(get_current_user),
   db: Session = Depends(get_db)
 ):
-  memo = db.query(Memo).filter(Memo.id == memo_id).first()
+  memo = db.query(Memo).filter(
+    Memo.id == memo_id,
+    Memo.user_id == current_user.id
+  ).first()
   
   if memo is None:
     raise HTTPException(
@@ -78,9 +100,10 @@ def update_memo(
 @router.delete("/{memo_id}")
 def delete_memo(
   memo_id: int,
+  current_user: User = Depends(get_current_user),
   db: Session = Depends(get_db)
 ):
-  memo = db.query(Memo).filter(Memo.id == memo_id).first()
+  memo = db.query(Memo).filter(Memo.id == memo_id, Memo.user_id == current_user.id).first()
   
   if memo is None:
     raise HTTPException(status_code=404, detail="메모를 찾을 수 없습니다")

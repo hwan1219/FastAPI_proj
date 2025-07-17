@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>메모 수정</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+  <script defer src="/static/js/memo_edit.js"></script>
+</head>
+<body>
+  <div class="container">
+    <h1>✏️ 메모 수정</h1>
+
+    <form id="editMemoForm">
+      <input type="text" id="title" name="title" placeholder="제목" required>
+      <textarea id="content" name="content" placeholder="내용" required></textarea>
+      <button type="submit">수정 저장</button>
+    </form>
+
+    <button id="cancelBtn">← 돌아가기</button>
+  </div>
+</body>
+</html>
